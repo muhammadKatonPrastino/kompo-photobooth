@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#c8102e">
+<title>Kompo Motor PhotoBooth</title>
+<style>
+:root{--red:#c8102e;--dark:#171717;--muted:#666;--line:#e7e7e7;--bg:#f5f5f7}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--dark);font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+.wrap{max-width:760px;margin:auto;padding:18px 14px 34px}
+header{background:var(--red);color:#fff;border-radius:20px;padding:20px 18px;text-align:center;box-shadow:0 8px 24px #c8102e25}
+.brand{font-size:12px;font-weight:800;letter-spacing:.18em;opacity:.95}
+h1{margin:7px 0 4px;font-size:clamp(25px,6vw,36px);line-height:1.1}
+header p{margin:8px 0 0;font-size:14px;opacity:.95}
+.panel{background:#fff;border:1px solid var(--line);border-radius:18px;padding:16px;margin-top:14px;box-shadow:0 4px 14px #00000008}
+h2{font-size:18px;margin:0 0 12px}
+.note{font-size:13px;color:var(--muted);line-height:1.5}
+video{display:block;width:100%;max-height:58vh;object-fit:cover;background:#161616;border-radius:14px;aspect-ratio:4/3}
+button,.button{border:0;border-radius:12px;padding:14px 16px;font-weight:800;font-size:15px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none}
+.primary{background:var(--red);color:#fff;width:100%}
+.secondary{background:#f1f1f1;color:#222}
+button:disabled{opacity:.45;cursor:not-allowed}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px}
+.actions .primary{grid-column:1/-1}
+#countdown{font-size:52px;font-weight:900;text-align:center;color:var(--red);min-height:62px;margin:6px 0}
+.progress{height:7px;background:#eee;border-radius:99px;overflow:hidden;margin:12px 0}
+.progress span{display:block;height:100%;width:0;background:var(--red);transition:width .2s}
+label{display:block;font-size:14px;font-weight:700;margin:13px 0 6px}
+input[type=text],input[type=tel]{width:100%;padding:13px 12px;border:1px solid #d5d5d5;border-radius:10px;font:inherit;font-size:16px}
+.check{display:flex;gap:10px;align-items:flex-start;font-size:13px;line-height:1.45;margin:14px 0;color:#444}
+.check input{margin-top:3px;transform:scale(1.15)}
+canvas{display:block;width:100%;height:auto;border-radius:12px;border:1px solid var(--line);background:#fff}
+.hidden{display:none!important}
+.status{font-size:13px;padding:10px 12px;border-radius:10px;background:#f5f5f5;line-height:1.45;margin-top:10px}
+.status.good{background:#eaf7ee;color:#185b2b}.status.warn{background:#fff3dc;color:#714900}.status.bad{background:#ffeded;color:#8d1020}
+footer{text-align:center;font-size:12px;color:#777;padding:18px 6px}
+small{font-size:12px;color:var(--muted)}
+@media(min-width:600px){.wrap{padding-top:28px}.panel{padding:20px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="brand">KOMPO MOTOR</div>
+  <h1>PHOTOBOOTH</h1>
+  <p>Abadikan momenmu • Salam Satu HATI</p>
+</header>
+
+<section class="panel" id="cameraPanel">
+  <h2>📸 Siap untuk berfoto?</h2>
+  <p class="note">Posisikan wajah di kamera. Kami akan mengambil 3 foto dengan hitung mundur otomatis, lalu menyusunnya menjadi satu foto strip.</p>
+  <video id="video" autoplay playsinline muted></video>
+  <div id="countdown" aria-live="polite"></div>
+  <div class="progress"><span id="progressBar"></span></div>
+  <div class="note" id="cameraStatus">Tekan tombol untuk mengaktifkan kamera.</div>
+  <div class="actions">
+    <button class="primary" id="startBtn">MULAI FOTO</button>
+    <button class="secondary" id="retakeBtn" disabled>Ulangi Foto</button>
+    <button class="secondary" id="switchBtn">Ganti Kamera</button>
+  </div>
+</section>
+
+<section class="panel hidden" id="resultPanel">
+  <h2>✨ Hasil foto kamu</h2>
+  <canvas id="stripCanvas" width="900" height="1900" aria-label="Hasil tiga foto tersusun vertikal"></canvas>
+  <div class="actions">
+    <button class="secondary" id="downloadBtn">Simpan Foto</button>
+    <button class="secondary" id="againBtn">Foto Ulang</button>
+  </div>
+  <p class="note">Isi data di bawah untuk menyimpan leads dan melanjutkan berbagi foto melalui WhatsApp.</p>
+</section>
+
+<section class="panel hidden" id="leadPanel">
+  <h2>📝 Kirim foto & simpan data</h2>
+  <form id="leadForm">
+    <label for="name">Nama lengkap</label>
+    <input id="name" name="name" type="text" autocomplete="name" maxlength="100" required placeholder="Masukkan nama lengkap">
+    <label for="phone">Nomor WhatsApp</label>
+    <input id="phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" maxlength="20" required placeholder="Contoh: 081234567890">
+    <div class="check">
+      <input id="consent" type="checkbox" required>
+      <label for="consent" style="margin:0;font-weight:400">Saya setuju data nama dan nomor WhatsApp saya disimpan oleh Kompo Motor untuk keperluan pengiriman foto dan tindak lanjut terkait layanan/promosi. Saya dapat meminta agar data saya tidak digunakan lagi.</label>
+    </div>
+    <button class="primary" id="sendBtn" type="submit">SIMPAN LEADS & BAGIKAN FOTO</button>
+  </form>
+  <div id="leadStatus" class="status hidden" role="status"></div>
+  <p class="note">Untuk privasi, batasi akses Google Sheets hanya kepada petugas yang berwenang.</p>
+</section>
+
+<footer>Kompo Motor • PhotoBooth<br>Jangan masukkan nomor orang lain tanpa izin.</footer>
+</div>
+
+<script>
+/*
+PENYIAPAN:
+1) Deploy Code.gs sebagai Web App dan salin URL /exec.
+2) Tempel URL tersebut ke CONFIG.appsScriptUrl di bawah.
+3) Pastikan akses web app disetel sesuai kebijakan organisasi Anda.
+*/
+const CONFIG = {
+  appsScriptUrl: "https://script.google.com/macros/s/AKfycbxeGEeQKKIkbqcJmMRApD78xDu3ynwXmeyYCvC3IWzLujhJr6AGmOG1vRWeo1dakNo/exec",
+  campaign: "Kompo Motor PhotoBooth",
+  // Nomor WA harus format internasional tanpa +, contoh 6281234567890.
+  // Ini hanya untuk membuka chat; tidak mengirim pesan otomatis.
+  dealerWhatsApp: ""
+};
+
+const $ = id => document.getElementById(id);
+const video = $("video"), canvas = $("stripCanvas"), ctx = canvas.getContext("2d");
+let stream = null, facingMode = "user", photos = [], busy = false, stripBlob = null;
+
+function setStatus(text, kind="") {
+  const el = $("leadStatus"); el.textContent = text; el.className = "status" + (kind ? " " + kind : "");
+}
+function cameraStatus(text){$("cameraStatus").textContent=text;}
+async function startCamera(){
+  try{
+    if(stream) stream.getTracks().forEach(t=>t.stop());
+    stream = await navigator.mediaDevices.getUserMedia({
+      audio:false, video:{facingMode:{ideal:facingMode},width:{ideal:1280},height:{ideal:960}}
+    });
+    video.srcObject=stream;
+    await video.play();
+    cameraStatus("Kamera aktif. Pastikan pencahayaan cukup.");
+    $("startBtn").disabled=false;
+  }catch(e){
+    cameraStatus("Kamera tidak bisa diakses. Izinkan akses kamera dan buka website melalui HTTPS. ("+e.name+")");
+    $("startBtn").disabled=true;
+  }
+}
+function wait(ms){return new Promise(resolve=>setTimeout(resolve,ms))}
+async function countdown(n){
+  for(let i=n;i>0;i--){$("countdown").textContent=i;await wait(850)}
+  $("countdown").textContent="📸";await wait(250);$("countdown").textContent="";
+}
+function takeSnapshot(){
+  const w=video.videoWidth,h=video.videoHeight;
+  if(!w||!h) throw new Error("Kamera belum siap.");
+  const c=document.createElement("canvas");c.width=w;c.height=h;
+  const x=c.getContext("2d");
+  // Kamera depan dibuat seperti tampilan cermin agar natural saat selfie.
+  if(facingMode==="user"){x.translate(w,0);x.scale(-1,1)}
+  x.drawImage(video,0,0,w,h);
+  return c;
+}
+async function captureThree(){
+  if(busy)return;
+  busy=true;$("startBtn").disabled=true;$("retakeBtn").disabled=true;
+  photos=[];
+  try{
+    for(let i=0;i<3;i++){
+      cameraStatus=`Bersiap untuk foto ${i+1} dari 3`;
+      await countdown(3);
+      photos.push(takeSnapshot());
+      $("progressBar").style.width=((i+1)/3*100)+"%";
+      cameraStatus=`Foto ${i+1} dari 3 berhasil diambil.`;
+      await wait(650);
+    }
+    makeStrip();
+    $("resultPanel").classList.remove("hidden");
+    $("leadPanel").classList.remove("hidden");
+    $("retakeBtn").disabled=false;
+    $("resultPanel").scrollIntoView({behavior:"smooth",block:"start"});
+  }catch(e){cameraStatus("Gagal mengambil foto: "+e.message)}
+  finally{busy=false;$("startBtn").disabled=false}
+}
+function drawCover(image, x,y,w,h){
+  const scale=Math.max(w/image.width,h/image.height);
+  const sw=w/scale,sh=h/scale;
+  const sx=(image.width-sw)/2,sy=(image.height-sh)/2;
+  ctx.drawImage(image,sx,sy,sw,sh,x,y,w,h);
+}
+function makeStrip(){
+  const W=900, photoH=500, gap=18, top=160, bottom=180;
+  canvas.width=W;canvas.height=top+photoH*3+gap*2+bottom;
+  ctx.fillStyle="#ffffff";ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle="#c8102e";ctx.fillRect(0,0,W,top);
+  ctx.fillStyle="#fff";ctx.textAlign="center";
+  ctx.font="900 30px system-ui, sans-serif";ctx.fillText("KOMPO MOTOR",W/2,52);
+  ctx.font="900 54px system-ui, sans-serif";ctx.fillText("PHOTOBOOTH",W/2,112);
+  let y=top;
+  photos.forEach((p,i)=>{
+    ctx.fillStyle="#f0f0f0";ctx.fillRect(0,y,W,photoH);
+    drawCover(p,0,y,W,photoH);
+    ctx.fillStyle="#c8102e";ctx.fillRect(22,y+18,86,42);
+    ctx.fillStyle="#fff";ctx.font="800 25px system-ui, sans-serif";ctx.textAlign="center";
+    ctx.fillText(String(i+1).padStart(2,"0"),65,y+47);
+    y+=photoH+gap;
+  });
+  ctx.fillStyle="#171717";ctx.fillRect(0,canvas.height-bottom,W,bottom);
+  ctx.fillStyle="#fff";ctx.textAlign="center";
+  ctx.font="800 34px system-ui, sans-serif";ctx.fillText("SALAM SATU HATI",W/2,canvas.height-bottom+62);
+  ctx.font="500 22px system-ui, sans-serif";ctx.fillText("Kompo Motor • Terima kasih sudah berkunjung",W/2,canvas.height-bottom+112);
+  canvas.toBlob(b=>{stripBlob=b},"image/jpeg",0.9);
+}
+function downloadStrip(){
+  if(!stripBlob){canvas.toBlob(b=>saveBlob(b),"image/jpeg",.9);return}
+  saveBlob(stripBlob);
+}
+function saveBlob(blob){
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="Kompo-Motor-PhotoBooth.jpg";a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1500);
+}
+function normalizePhone(raw){
+  let p=raw.replace(/[^\d]/g,"");
+  if(p.startsWith("0"))p="62"+p.slice(1);
+  if(p.startsWith("8"))p="62"+p;
+  if(!p.startsWith("62")||p.length<10||p.length>15)throw new Error("Periksa kembali nomor WhatsApp. Gunakan nomor Indonesia yang aktif.");
+  return p;
+}
+async function saveLead(data){
+  if(!CONFIG.appsScriptUrl || CONFIG.appsScriptUrl.includes("TEMPEL_URL")){
+    throw new Error("Google Sheets belum dihubungkan. Ikuti petunjuk pemasangan di file panduan.");
+  }
+  // Apps Script menerima form-urlencoded. no-cors berarti browser tidak bisa membaca respons.
+  // Status UI menyebut 'permintaan dikirim', bukan mengklaim database sudah terverifikasi.
+  const body=new URLSearchParams(data);
+  await fetch(CONFIG.appsScriptUrl,{method:"POST",mode:"no-cors",body});
+}
+async function shareWhatsApp(phone,name){
+  const message=`Halo ${name}, terima kasih sudah berfoto di Kompo Motor! Salam Satu HATI.`;
+  // Share sheet dapat melampirkan gambar pada browser/perangkat yang mendukung.
+  if(stripBlob && navigator.share && navigator.canShare){
+    const file=new File([stripBlob],"Kompo-Motor-PhotoBooth.jpg",{type:"image/jpeg"});
+    if(navigator.canShare({files:[file]})){
+      try{await navigator.share({title:"Foto Kompo Motor",text:message,files:[file]});return "Berbagi dibuka melalui menu perangkat."}catch(e){}
+    }
+  }
+  // Fallback: unduh foto dan buka WhatsApp dengan pesan. Lampiran perlu ditambahkan manual.
+  downloadStrip();
+  const url=`https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+  window.open(url,"_blank","noopener");
+  return "Foto diunduh. WhatsApp dibuka; lampirkan foto yang diunduh lalu tekan Kirim.";
+}
+$("startBtn").addEventListener("click",captureThree);
+$("retakeBtn").addEventListener("click",()=>{photos=[];$("resultPanel").classList.add("hidden");$("leadPanel").classList.add("hidden");$("progressBar").style.width="0";captureThree()});
+$("againBtn").addEventListener("click",()=>{photos=[];$("resultPanel").classList.add("hidden");$("leadPanel").classList.add("hidden");$("progressBar").style.width="0";$("cameraPanel").scrollIntoView({behavior:"smooth"});});
+$("switchBtn").addEventListener("click",async()=>{facingMode=facingMode==="user"?"environment":"user";await startCamera()});
+$("downloadBtn").addEventListener("click",downloadStrip);
+$("leadForm").addEventListener("submit",async e=>{
+  e.preventDefault();if(!photos.length)return;
+  $("sendBtn").disabled=true;
+  try{
+    const name=$("name").value.trim();const phone=normalizePhone($("phone").value);
+    if(!name)throw new Error("Masukkan nama lengkap.");
+    const leadId=crypto.randomUUID?crypto.randomUUID():String(Date.now());
+    const data={leadId,name,phone,campaign:CONFIG.campaign,consent:"YES",timestamp:new Date().toISOString(),userAgent:navigator.userAgent};
+    await saveLead(data);
+    setStatus("Permintaan penyimpanan leads sudah dikirim. Karena browser tidak dapat membaca konfirmasi Google Apps Script, pastikan baris baru muncul di Google Sheets sebelum meninggalkan perangkat.","warn");
+    const shareStatus=await shareWhatsApp(phone,name);
+    setStatus("Permintaan leads telah dikirim. "+shareStatus+" Pastikan data tercatat di Google Sheets. Pengiriman otomatis tanpa tindakan pengunjung membutuhkan WhatsApp Business API.","good");
+  }catch(err){setStatus(err.message||"Terjadi kendala. Silakan coba lagi.","bad")}
+  finally{$("sendBtn").disabled=false}
+});
+if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+  cameraStatus("Browser ini belum mendukung akses kamera. Coba gunakan Chrome/Safari terbaru melalui HTTPS.");
+  $("startBtn").disabled=true;
+}else{startCamera()}
+</script>
+</body>
+</html>
