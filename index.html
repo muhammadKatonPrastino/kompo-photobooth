@@ -17,7 +17,17 @@ header p{margin:8px 0 0;font-size:14px;opacity:.95}
 .panel{background:#fff;border:1px solid var(--line);border-radius:18px;padding:16px;margin-top:14px;box-shadow:0 4px 14px #00000008}
 h2{font-size:18px;margin:0 0 12px}
 .note{font-size:13px;color:var(--muted);line-height:1.5}
-video{display:block;width:100%;max-height:58vh;object-fit:cover;background:#161616;border-radius:14px;aspect-ratio:4/3}
+/* Preview kamera depan dibuat mirror seperti cermin */
+video{
+  display:block;
+  width:100%;
+  max-height:58vh;
+  object-fit:cover;
+  background:#161616;
+  border-radius:14px;
+  aspect-ratio:4/3;
+  transform:scaleX(-1);
+}
 button,.button{border:0;border-radius:12px;padding:14px 16px;font-weight:800;font-size:15px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none}
 .primary{background:var(--red);color:#fff;width:100%}
 .secondary{background:#f1f1f1;color:#222}
