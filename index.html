@@ -147,6 +147,15 @@ function setStatus(message, kind = "warn") {
 function cameraStatus(message) {
   $("cameraStatus").textContent = message;
 }
+  
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result).split(",")[1]);
+    r.onerror = () => reject(new Error("Foto gagal dibaca."));
+    r.readAsDataURL(blob);
+  });
+}
 
 function hideStatus() {
   $("leadStatus").classList.add("hidden");
@@ -476,10 +485,19 @@ function normalizePhone(raw) {
 
 async function saveLead(data) {
   const url = CONFIG.appsScriptUrl.trim();
-
   if (!url || !url.includes("/exec")) {
-    throw new Error("URL Google Apps Script belum benar. Periksa konfigurasi.");
+    throw new Error("URL Google Apps Script belum benar.");
   }
+
+  const body = new URLSearchParams();
+  Object.entries(data).forEach(([k, v]) => body.append(k, String(v ?? "")));
+
+  const res = await fetch(url, { method: "POST", body });
+  const result = await res.json();
+
+  if (!result.ok) throw new Error(result.message || "Data gagal disimpan.");
+  return result;
+}
 
   const body = new URLSearchParams();
 
@@ -504,13 +522,14 @@ async function saveLead(data) {
    BAGIKAN FOTO
 ========================= */
 
-async function shareWhatsApp(phone, name) {
+async function shareWhatsApp(phone, name, photoUrl) {
   const message =
-    `Halo ${name}, terima kasih sudah berfoto di Kompo Motor! Salam Satu HATI.`;
+    `Halo ${name}, terima kasih sudah berfoto di Kompo Motor! Salam Satu HATI.\n\n` +
+    `Foto kamu: ${photoUrl}`;
 
-  if (!stripBlob) {
-    throw new Error("Foto belum siap untuk dibagikan.");
-  }
+  window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, "_blank");
+  return "WhatsApp dibuka dengan pesan dan link foto. Tekan Kirim untuk mengirim.";
+}
 
   // Coba buka menu share perangkat dengan file foto
   if (navigator.share && navigator.canShare) {
@@ -640,15 +659,16 @@ $("leadForm").addEventListener("submit", async event => {
       (crypto.randomUUID && crypto.randomUUID()) ||
       `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
-    const data = {
-      leadId,
-      name,
-      phone,
-      campaign: CONFIG.campaign,
-      consent: "YES",
-      timestamp: new Date().toISOString(),
-      userAgent: navigator.userAgent
-    };
+   const data = { leadId, name, phone, campaign: CONFIG.campaign, consent: "YES",
+  timestamp: new Date().toISOString(), userAgent: navigator.userAgent,
+  photo: await blobToBase64(stripBlob) };
+
+const result = await saveLead(data);
+
+setStatus("Data tersimpan.", "good");
+
+const shareStatus = await shareWhatsApp(phone, name, result.photoUrl);
+setStatus("Data tersimpan. " + shareStatus, "good");
 
     await saveLead(data);
 
